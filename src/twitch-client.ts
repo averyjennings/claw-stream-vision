@@ -28,6 +28,16 @@ export class TwitchClient {
       // Don't echo back our own messages
       if (self) return
 
+      // Convert badges from tmi.js format (string | undefined values) to string values
+      const badges: Record<string, string> = {}
+      if (tags.badges) {
+        for (const [key, value] of Object.entries(tags.badges)) {
+          if (value !== undefined) {
+            badges[key] = value
+          }
+        }
+      }
+
       const chatMessage: ChatMessage = {
         timestamp: Date.now(),
         username: tags.username ?? "anonymous",
@@ -36,7 +46,7 @@ export class TwitchClient {
         channel: channel.replace("#", ""),
         isMod: tags.mod ?? false,
         isSubscriber: tags.subscriber ?? false,
-        badges: tags.badges ?? {},
+        badges,
       }
 
       for (const handler of this.messageHandlers) {
