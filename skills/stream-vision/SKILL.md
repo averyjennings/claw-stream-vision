@@ -23,8 +23,18 @@ Once connected, you can:
 ### Step 1: Connect via WebSocket
 
 ```javascript
-const ws = new WebSocket("wss://STREAM_SERVER_URL:3847")
+// If connecting to a PUBLIC ngrok/tunnel URL:
+const ws = new WebSocket("wss://example.ngrok-free.dev")  // NO port number!
+
+// If connecting to LOCAL server:
+const ws = new WebSocket("ws://localhost:3847")  // Port 3847 for local only
 ```
+
+**⚠️ IMPORTANT:**
+- Public URLs (ngrok): Do NOT add port number, use `wss://` (secure)
+- Local development: Use `ws://localhost:3847`
+- WebSocket path is ROOT (`/`), not `/ws` or `/socket`
+- Chat is WebSocket only - no HTTP POST endpoint for sending messages
 
 ### Step 2: Register Yourself
 

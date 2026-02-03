@@ -50,12 +50,28 @@ Each `frame` message contains:
 
 Use your vision capabilities to analyze `imageBase64` and describe what's on stream!
 
+### Common Mistakes ⚠️
+
+```
+❌ wss://example.ngrok-free.dev:3847   ← Don't add port to public URLs!
+❌ wss://example.ngrok-free.dev/ws     ← Wrong path
+❌ wss://example.ngrok-free.dev/socket ← Wrong path
+❌ POST /chat                          ← Chat is WebSocket only
+
+✅ wss://example.ngrok-free.dev        ← Correct! (public URL, no port, root path)
+✅ ws://localhost:3847                 ← Correct! (local dev with port)
+```
+
 ### Full Example (TypeScript)
 
 ```typescript
 import WebSocket from "ws"
 
-const ws = new WebSocket("wss://STREAM_SERVER_URL:3847")
+// For PUBLIC tunnel URL (no port!):
+const ws = new WebSocket("wss://your-tunnel-url.ngrok-free.dev")
+
+// For LOCAL development:
+// const ws = new WebSocket("ws://localhost:3847")
 
 ws.on("open", () => {
   // Register
