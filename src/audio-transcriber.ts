@@ -250,9 +250,10 @@ export class AudioTranscriber {
       // Combined short phrase filter
       const isLikelyShortHallucination = isShortNonsense && startsWithFiller
 
-      // Filter out repeated words like "the the the the" or "you you you"
+      // Filter out repeated words like "the the the the" or "hello hello hello"
+      // Any word repeated 3+ times is likely a hallucination, not real speech
       const uniqueWords = new Set(words.map(w => w.replace(/[^a-z]/g, "")))
-      const isRepeatedWord = words.length >= 3 && uniqueWords.size === 1 && singleWordHallucinations.includes([...uniqueWords][0])
+      const isRepeatedWord = words.length >= 3 && uniqueWords.size === 1
 
       if (text && text.length > 0 && !isHallucination && !isTooShort && !isSingleCommonWord && !isLikelyShortHallucination && !isRepeatedWord) {
         console.log(`[Audio] Transcribed: "${text}" (buffering...)`)
