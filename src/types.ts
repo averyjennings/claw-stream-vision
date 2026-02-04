@@ -21,6 +21,10 @@ export interface TwitchConfig {
   oauthToken: string
   channel: string
   streamQuality?: string // For twitch capture mode: "720p", "480p", "best", etc.
+  // For auto-refresh (optional - get these by registering your own Twitch app)
+  clientId?: string
+  clientSecret?: string
+  refreshToken?: string
 }
 
 export interface OBSConfig {

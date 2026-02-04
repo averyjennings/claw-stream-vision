@@ -232,10 +232,21 @@ export class AudioTranscriber {
       const words = lowerText.trim().split(/\s+/)
       const isSingleCommonWord = words.length === 1 && singleWordHallucinations.includes(words[0].replace(/[^a-z]/g, ""))
 
-      if (text && text.length > 0 && !isHallucination && !isTooShort && !isSingleCommonWord) {
+      // Filter out very short phrases (2-3 words) that are likely hallucinations
+      // e.g., "you KATHRYN", "the end", "oh yeah" - these are usually noise
+      const isShortNonsense = words.length <= 3 && text.length < 20
+
+      // Filter out phrases that start with common filler + random word (like "you KATHRYN")
+      const startsWithFiller = words.length >= 1 && words.length <= 3 &&
+        singleWordHallucinations.includes(words[0].replace(/[^a-z]/g, ""))
+
+      // Combined short phrase filter
+      const isLikelyShortHallucination = isShortNonsense && startsWithFiller
+
+      if (text && text.length > 0 && !isHallucination && !isTooShort && !isSingleCommonWord && !isLikelyShortHallucination) {
         console.log(`[Audio] Transcribed: "${text}" (buffering...)`)
         this.addToBuffer(text)
-      } else if (isHallucination || isSingleCommonWord) {
+      } else if (isHallucination || isSingleCommonWord || isLikelyShortHallucination) {
         console.log(`[Audio] Filtered hallucination: "${text}"`)
       }
     } catch (err) {

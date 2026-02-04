@@ -40,6 +40,10 @@ export function loadConfig(): StreamConfig {
       oauthToken: requireEnv("TWITCH_OAUTH_TOKEN"),
       channel: requireEnv("TWITCH_CHANNEL"),
       streamQuality: optionalEnv("TWITCH_STREAM_QUALITY", "720p"), // For twitch capture mode
+      // Optional: For auto-refresh tokens (register your own Twitch app)
+      clientId: process.env.TWITCH_CLIENT_ID,
+      clientSecret: process.env.TWITCH_CLIENT_SECRET,
+      refreshToken: process.env.TWITCH_REFRESH_TOKEN,
     },
     obs: {
       websocketUrl: optionalEnv("OBS_WEBSOCKET_URL", "ws://127.0.0.1:4455"),
