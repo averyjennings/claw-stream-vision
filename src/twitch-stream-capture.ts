@@ -139,32 +139,71 @@ export class TwitchStreamCapture {
 
   private captureWithStreamlink(streamUrl: string, outputFile: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      // streamlink pipes to ffmpeg which captures a single frame
-      // This is more reliable than trying to maintain a persistent connection
+      // Two-step approach: streamlink writes to temp file, ffmpeg extracts frame
+      const tempVideo = path.join(this.tempDir, `temp-${Date.now()}.ts`)
 
+      // Step 1: Get a few seconds of video with streamlink
       const streamlinkArgs = [
         streamUrl,
         this.config.quality!,
-        "--stdout",        // Output to stdout
-        "--quiet",         // Less verbose
+        "-o", tempVideo,
+        "--stream-segmented-duration", "3s", // Get 3 seconds of video
+        "--quiet",
       ]
 
-      const ffmpegArgs = [
-        "-i", "pipe:0",    // Read from stdin (streamlink output)
-        "-vframes", "1",   // Capture just 1 frame
-        "-s", `${this.config.width}x${this.config.height}`,
-        "-y",              // Overwrite output
-        outputFile,
-      ]
-
-      // Spawn streamlink
       const streamlink = spawn("streamlink", streamlinkArgs, {
         stdio: ["ignore", "pipe", "pipe"],
       })
 
-      // Spawn ffmpeg, pipe streamlink output to it
+      const timeout = setTimeout(() => {
+        streamlink.kill("SIGKILL")
+        // Try to extract frame anyway if we got partial data
+        this.extractFrame(tempVideo, outputFile).then(resolve).catch(reject)
+      }, 15000)
+
+      streamlink.on("close", () => {
+        clearTimeout(timeout)
+
+        // Step 2: Extract frame with ffmpeg
+        this.extractFrame(tempVideo, outputFile)
+          .then(resolve)
+          .catch(reject)
+          .finally(() => {
+            // Clean up temp video
+            if (fs.existsSync(tempVideo)) {
+              fs.unlinkSync(tempVideo)
+            }
+          })
+      })
+
+      streamlink.on("error", (err) => {
+        clearTimeout(timeout)
+        if (fs.existsSync(tempVideo)) {
+          fs.unlinkSync(tempVideo)
+        }
+        reject(err)
+      })
+    })
+  }
+
+  private extractFrame(inputFile: string, outputFile: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!fs.existsSync(inputFile)) {
+        reject(new Error("Input video file not found"))
+        return
+      }
+
+      const ffmpegArgs = [
+        "-i", inputFile,
+        "-vframes", "1",
+        "-s", `${this.config.width}x${this.config.height}`,
+        "-update", "1", // Write single image without sequence pattern
+        "-y",
+        outputFile,
+      ]
+
       const ffmpeg = spawn("ffmpeg", ffmpegArgs, {
-        stdio: [streamlink.stdout, "pipe", "pipe"],
+        stdio: ["ignore", "pipe", "pipe"],
       })
 
       let stderr = ""
@@ -172,35 +211,15 @@ export class TwitchStreamCapture {
         stderr += data.toString()
       })
 
-      // Set timeout to avoid hanging
-      const timeout = setTimeout(() => {
-        streamlink.kill()
-        ffmpeg.kill()
-        reject(new Error("Capture timed out after 30s"))
-      }, 30000)
-
       ffmpeg.on("close", (code) => {
-        clearTimeout(timeout)
-        streamlink.kill() // Ensure streamlink is killed
-
-        if (code === 0) {
+        if (code === 0 && fs.existsSync(outputFile)) {
           resolve()
         } else {
-          reject(new Error(`ffmpeg exited with code ${code}: ${stderr}`))
+          reject(new Error(`ffmpeg exited with code ${code}: ${stderr.slice(-500)}`))
         }
       })
 
-      ffmpeg.on("error", (err) => {
-        clearTimeout(timeout)
-        streamlink.kill()
-        reject(err)
-      })
-
-      streamlink.on("error", (err) => {
-        clearTimeout(timeout)
-        ffmpeg.kill()
-        reject(err)
-      })
+      ffmpeg.on("error", reject)
     })
   }
 

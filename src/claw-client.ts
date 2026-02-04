@@ -4,6 +4,7 @@ import type {
   ChatMessage,
   StreamState,
   VisionBroadcast,
+  TranscriptMessage,
 } from "./types.js"
 
 interface ClawClientConfig {
@@ -16,6 +17,7 @@ interface ClawClientConfig {
 type FrameHandler = (frame: StreamFrame) => void
 type ChatHandler = (message: ChatMessage) => void
 type StateHandler = (state: StreamState) => void
+type TranscriptHandler = (transcript: TranscriptMessage) => void
 
 /**
  * Client library for OpenClaw agents to connect to Claw Stream Vision
@@ -54,6 +56,7 @@ export class ClawStreamClient {
   private frameHandlers: FrameHandler[] = []
   private chatHandlers: ChatHandler[] = []
   private stateHandlers: StateHandler[] = []
+  private transcriptHandlers: TranscriptHandler[] = []
   private reconnectAttempts = 0
   private maxReconnectAttempts = 5
   private reconnectDelay = 1000
@@ -166,6 +169,12 @@ export class ClawStreamClient {
           handler(broadcast.payload as StreamState)
         }
         break
+
+      case "transcript":
+        for (const handler of this.transcriptHandlers) {
+          handler(broadcast.payload as TranscriptMessage)
+        }
+        break
     }
   }
 
@@ -207,6 +216,10 @@ export class ClawStreamClient {
 
   onState(handler: StateHandler): void {
     this.stateHandlers.push(handler)
+  }
+
+  onTranscript(handler: TranscriptHandler): void {
+    this.transcriptHandlers.push(handler)
   }
 
   // Actions

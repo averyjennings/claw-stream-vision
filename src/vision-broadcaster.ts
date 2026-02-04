@@ -9,6 +9,7 @@ import type {
   VisionBroadcast,
   ClawMessage,
   ServerConfig,
+  TranscriptMessage,
 } from "./types.js"
 
 interface ConnectedClaw {
@@ -239,6 +240,16 @@ export class VisionBroadcaster {
     const message: VisionBroadcast = {
       type: "chat",
       payload: chatMessage,
+      timestamp: Date.now(),
+    }
+
+    this.broadcast(message)
+  }
+
+  broadcastTranscript(transcript: TranscriptMessage): void {
+    const message: VisionBroadcast = {
+      type: "transcript",
+      payload: transcript,
       timestamp: Date.now(),
     }
 
