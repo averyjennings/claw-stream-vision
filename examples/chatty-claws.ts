@@ -15,14 +15,14 @@ import type { StreamFrame, ChatMessage, TranscriptMessage } from "../src/types.j
 
 const CLAW_COUNT = parseInt(process.env.CLAW_COUNT ?? "5", 10)
 // Public server URL - connect to the Claw Con stream server
-const SERVER_URL = process.env.VISION_SERVER_URL ?? "wss://claw-stream.loca.lt"
+const SERVER_URL = process.env.VISION_SERVER_URL ?? "wss://discusses-purpose-surfaces-dist.trycloudflare.com"
 
 const anthropic = new Anthropic()
 
-// ========== MEMORY LIMITS ==========
-const CHAT_HISTORY_LIMIT = 750       // 5x transcripts - chat is fast & short
-const TRANSCRIPT_HISTORY_LIMIT = 150 // ~20 min of spoken content at 8s chunks
-const FRAME_SUMMARY_LIMIT = 36       // ~3 min at 5s intervals
+// ========== MEMORY LIMITS (reduced for lower latency) ==========
+const CHAT_HISTORY_LIMIT = 100       // Keep it lean for fast API calls
+const TRANSCRIPT_HISTORY_LIMIT = 30  // ~2 min of spoken content at 4s chunks
+const FRAME_SUMMARY_LIMIT = 12       // ~1 min at 5s intervals
 
 const CLAW_PERSONALITIES = [
   // HYPE SQUAD - Maximum energy Twitch chatters
@@ -91,6 +91,18 @@ const CLAW_PERSONALITIES = [
   { name: "StreamSniper", personality: "'caught in 4k' 'sussy' 'sniped' 'sniping KEKW'. You pretend everything is sus." },
   { name: "TechSupport", personality: "You notice technical issues. 'scuffed audio' 'frame drop?' 'is stream lagging?' 'F in chat'." },
   { name: "Timestamp", personality: "You timestamp everything. 'timestamp' 'mark that' '42:69 KEKW'. You're the unofficial archivist." },
+
+  // MORALLY DUBIOUS - Chaos agents with edge
+  { name: "ToxicTom", personality: "You're mildly toxic but funny. 'skill issue' 'cope' 'seethe' 'ratio' 'L + ratio'. Never actually mean, just ironic toxicity." },
+  { name: "DevilsAdvocate", personality: "You argue the opposite of whatever everyone says. 'actually...' 'counterpoint:' 'unpopular opinion but'. Contrarian energy." },
+  { name: "ChaosGremlin", personality: "You want to see chaos. 'do it' 'no balls' 'bet you wont' 'SEND IT'. You encourage bad decisions for entertainment." },
+  { name: "Doomer", personality: "Everything is doomed. 'its over' 'we lost' 'pack it up' 'gg go next'. Dramatic pessimist but funny about it." },
+  { name: "Heckler", personality: "Light roasting energy. 'bro really just did that' 'imagine' 'couldnt be me'. You tease but never cross the line." },
+  { name: "SaltLord", personality: "Perpetually salty. 'rigged' 'unfair' 'I blame lag' 'streamer luck'. Find something to be salty about, comedically." },
+  { name: "GigaChadIronic", personality: "Ironic sigma/gigachad posting. 'based' 'sigma grindset' 'we stay winning' 'cant stop wont stop'. Over the top confidence." },
+  { name: "Villain_Arc", personality: "You narrate everything like a villain origin story. 'and so it begins' 'they called me crazy' 'the prophecy'. Dramatic villain energy." },
+  { name: "AgentOfChaos", personality: "You stir the pot. Ask controversial questions. 'wait is that allowed?' 'chat what do we think about this' 'interesting take'. Chaos instigator." },
+  { name: "NPC_Energy", personality: "You say generic NPC things. 'I used to be an adventurer' 'nice day for fishing' 'have you heard of the high elves'. Random NPC dialogue." },
 ]
 
 interface TimestampedTranscript {
@@ -112,12 +124,55 @@ interface ChattyClaw {
   recentTranscripts: TimestampedTranscript[]
   frameSummaries: FrameSummary[]
   isThinking: boolean
-  isSummarizing: boolean
   lastSpokeAt: number
 }
 
 const claws: ChattyClaw[] = []
 const MIN_RESPONSE_DELAY = 3000 // Don't respond faster than 3s
+
+// ========== SHARED FRAME SUMMARY CACHE ==========
+// One summary per frame, shared by all claws (not 50 API calls!)
+interface SharedFrameSummary {
+  summary: string
+  timestamp: number
+}
+const sharedFrameSummaries: SharedFrameSummary[] = []
+let isGlobalSummarizing = false
+let lastSummarizedTimestamp = 0
+
+async function getOrCreateFrameSummary(frame: StreamFrame): Promise<void> {
+  // Skip if we already summarized this frame (same timestamp)
+  if (frame.timestamp === lastSummarizedTimestamp) return
+
+  // Skip if already summarizing
+  if (isGlobalSummarizing) return
+
+  isGlobalSummarizing = true
+  lastSummarizedTimestamp = frame.timestamp
+
+  try {
+    const summary = await summarizeFrame(frame)
+    sharedFrameSummaries.push({
+      summary,
+      timestamp: frame.timestamp,
+    })
+    // Keep only last FRAME_SUMMARY_LIMIT summaries
+    if (sharedFrameSummaries.length > FRAME_SUMMARY_LIMIT) {
+      sharedFrameSummaries.shift()
+    }
+
+    // Push to all claws
+    for (const claw of claws) {
+      claw.frameSummaries = [...sharedFrameSummaries]
+    }
+
+    console.log(`🖼️ [SHARED] Frame summary: ${summary.substring(0, 60)}...`)
+  } catch (err) {
+    console.error(`[FrameSummary] Error:`, err)
+  }
+
+  isGlobalSummarizing = false
+}
 
 /**
  * Generate a concise summary of what's visible in a frame
@@ -125,7 +180,7 @@ const MIN_RESPONSE_DELAY = 3000 // Don't respond faster than 3s
 async function summarizeFrame(frame: StreamFrame): Promise<string> {
   try {
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-3-5-haiku-20241022",
       max_tokens: 100,
       messages: [{
         role: "user",
@@ -300,7 +355,7 @@ ${chatHistoryFormatted || "(chat is empty)"}
   })
 
   const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: "claude-3-5-haiku-20241022",
     max_tokens: 60, // Short Twitch-style messages!
     system: systemPrompt,
     messages: [{ role: "user", content: userContent }],
@@ -377,33 +432,14 @@ async function spawnChattyClaw(index: number): Promise<ChattyClaw> {
     recentTranscripts: [],
     frameSummaries: [],
     isThinking: false,
-    isSummarizing: false,
     lastSpokeAt: 0,
   }
 
-  // Receive frames and create summaries
+  // Receive frames - use shared summary cache (1 API call per frame, not 50!)
   client.onFrame(async (frame) => {
     claw.lastFrame = frame
-
-    // Summarize frame in background (don't block, limit concurrent summarizations)
-    if (!claw.isSummarizing) {
-      claw.isSummarizing = true
-      try {
-        const summary = await summarizeFrame(frame)
-        claw.frameSummaries.push({
-          summary,
-          timestamp: frame.timestamp,
-        })
-        // Keep only last FRAME_SUMMARY_LIMIT summaries
-        if (claw.frameSummaries.length > FRAME_SUMMARY_LIMIT) {
-          claw.frameSummaries.shift()
-        }
-        console.log(`🖼️ ${claw.name} frame summary: ${summary.substring(0, 50)}...`)
-      } catch (err) {
-        console.error(`[FrameSummary] ${claw.name} error:`, err)
-      }
-      claw.isSummarizing = false
-    }
+    // Trigger shared summarization (only one claw needs to do this)
+    getOrCreateFrameSummary(frame)
   })
 
   // Receive chat messages
@@ -440,11 +476,15 @@ async function spawnChattyClaw(index: number): Promise<ChattyClaw> {
 
     console.log(`🎤 ${claw.name} heard: "${transcript.text}"`)
 
-    // Chance to respond to streamer speaking
-    const shouldRespondToVoice = Math.random() > 0.30 // 70% chance - streamer voice is important!
+    // Dynamic probability: more bots = more responders, but with diminishing returns
+    // Formula: expectedResponders = 2 + sqrt(CLAW_COUNT), probability = expectedResponders / CLAW_COUNT
+    // 5 bots → ~4 respond (80%), 10 bots → ~5 (50%), 25 bots → ~7 (28%), 50 bots → ~9 (18%)
+    const expectedResponders = 2 + Math.sqrt(CLAW_COUNT)
+    const voiceResponseProbability = Math.min(0.8, expectedResponders / CLAW_COUNT)
+    const shouldRespondToVoice = Math.random() < voiceResponseProbability
 
     if (shouldRespondToVoice) {
-      const delay = 500 + Math.random() * 1000 // Faster response to voice (0.5-1.5s)
+      const delay = Math.random() * 5000 // Spread responses over 0-5 seconds
       setTimeout(() => {
         makeClawSpeak(claw, null, `The streamer just said: "${transcript.text}". Respond to what they said!`)
       }, delay)
@@ -458,11 +498,15 @@ async function spawnChattyClaw(index: number): Promise<ChattyClaw> {
 }
 
 async function runChattyClaws() {
+  const expectedResponders = Math.round(2 + Math.sqrt(CLAW_COUNT))
+  const voiceResponseProbability = Math.min(0.8, expectedResponders / CLAW_COUNT)
+
   console.log(`\n🦀 CHATTY CLAWS - ${CLAW_COUNT} AI claws with ENHANCED MEMORY!`)
   console.log(`   Server: ${SERVER_URL}`)
   console.log(`   Chat History: ${CHAT_HISTORY_LIMIT} messages`)
   console.log(`   Transcript History: ${TRANSCRIPT_HISTORY_LIMIT} statements`)
   console.log(`   Visual Memory: ${FRAME_SUMMARY_LIMIT} frame summaries`)
+  console.log(`   Voice Response: ${Math.round(voiceResponseProbability * 100)}% chance (~${expectedResponders} bots/transcript)`)
   console.log(`   ⚠️  Uses API credits for responses + frame summaries\n`)
 
   // Spawn claws

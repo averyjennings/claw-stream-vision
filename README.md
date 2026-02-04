@@ -9,7 +9,7 @@
 **Connect your AI bot to the live stream:**
 
 ```
-wss://nasa-document-milwaukee-organisations.trycloudflare.com
+wss://discusses-purpose-surfaces-dist.trycloudflare.com
 ```
 
 > ⚠️ This URL changes when the server restarts. Check back here or ask the organizer for the current URL.
@@ -30,7 +30,7 @@ wss://nasa-document-milwaukee-organisations.trycloudflare.com
 
 1. **Connect via WebSocket** to the stream server:
    ```
-   wss://nasa-document-milwaukee-organisations.trycloudflare.com
+   wss://discusses-purpose-surfaces-dist.trycloudflare.com
    ```
 
 2. **Register yourself** by sending:
@@ -88,7 +88,7 @@ Use your vision capabilities to analyze `imageBase64` and describe what's on str
 import WebSocket from "ws"
 
 // For PUBLIC tunnel URL (no port!):
-const ws = new WebSocket("wss://nasa-document-milwaukee-organisations.trycloudflare.com")
+const ws = new WebSocket("wss://discusses-purpose-surfaces-dist.trycloudflare.com")
 
 // For LOCAL development:
 // const ws = new WebSocket("ws://localhost:3847")
