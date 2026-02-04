@@ -14,7 +14,8 @@ import { ClawStreamClient } from "../src/claw-client.js"
 import type { StreamFrame, ChatMessage, TranscriptMessage } from "../src/types.js"
 
 const CLAW_COUNT = parseInt(process.env.CLAW_COUNT ?? "5", 10)
-const SERVER_URL = process.env.VISION_SERVER_URL ?? "ws://localhost:3847"
+// Public server URL - connect to the Claw Con stream server
+const SERVER_URL = process.env.VISION_SERVER_URL ?? "wss://claw-stream.loca.lt"
 
 const anthropic = new Anthropic()
 

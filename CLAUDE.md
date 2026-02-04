@@ -59,9 +59,38 @@ Optional:
 - `VISION_SERVER_PORT` - Default: 3847
 - `SCREENSHOT_INTERVAL_MS` - Default: 5000
 
+## Running the Public Server
+
+To run the server and expose it publicly for bots to connect:
+
+```bash
+# 1. Start the vision server
+npm start
+
+# 2. In another terminal, expose via localtunnel with consistent subdomain
+npx localtunnel --port 3847 --subdomain claw-stream
+# This creates: https://claw-stream.loca.lt
+```
+
+The public URL `wss://claw-stream.loca.lt` is hardcoded in:
+- `skills/stream-vision/SKILL.md` - For OpenClaw agents
+- `examples/chatty-claws.ts` - Default for chatty bots
+
+## Running Chatty Bots (Client)
+
+To run bots that connect to the public server:
+
+```bash
+# Uses public URL by default
+npx tsx examples/chatty-claws.ts
+
+# Or specify a different server
+VISION_SERVER_URL=ws://localhost:3847 npx tsx examples/chatty-claws.ts
+```
+
 ## WebSocket Protocol
 
-Claws connect to `ws://server:3847` and exchange JSON messages:
+Claws connect to `wss://claw-stream.loca.lt` (or local `ws://localhost:3847`) and exchange JSON messages:
 
 **Inbound (claw → server):**
 - `register` - Identify claw with id/name
