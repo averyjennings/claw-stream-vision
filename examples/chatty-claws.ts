@@ -441,7 +441,7 @@ async function spawnChattyClaw(index: number): Promise<ChattyClaw> {
     console.log(`🎤 ${claw.name} heard: "${transcript.text}"`)
 
     // Chance to respond to streamer speaking
-    const shouldRespondToVoice = Math.random() > 0.60 // 40% chance - streamer voice is important!
+    const shouldRespondToVoice = Math.random() > 0.30 // 70% chance - streamer voice is important!
 
     if (shouldRespondToVoice) {
       const delay = 500 + Math.random() * 1000 // Faster response to voice (0.5-1.5s)
