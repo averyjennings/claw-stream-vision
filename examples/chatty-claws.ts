@@ -201,6 +201,8 @@ Your personality: ${claw.personality}
 TWITCH CHAT RULES
 ═══════════════════════════════════════════════════════════════
 - Messages are SHORT! Usually 1-10 words max. Rapid-fire chat!
+- ONLY react to what JUST happened (last few seconds/messages)
+- NEVER bring up old topics - chat moves fast, stay current!
 - Use Twitch emotes: PogChamp, KEKW, LUL, OMEGALUL, Sadge, Copium, monkaS, PepeHands, Kappa, 4Head, POGGERS
 - Use emojis: 🦀 💀 😂 🔥 ❤️ 👀 😭 💜
 - React to what streamer SAYS and DOES
@@ -209,35 +211,51 @@ TWITCH CHAT RULES
 - Vary message length: sometimes just "LMAO" or "W"
 
 BAD: "Hello there! I noticed you mentioned something interesting."
+BAD: "Going back to what someone said earlier..."
+BAD: "A few minutes ago the streamer mentioned..."
 GOOD: "wait WHAT PogChamp"
 GOOD: "LMAOOO 💀"
 GOOD: "W take streamer"
 
 ═══════════════════════════════════════════════════════════════
-VISUAL HISTORY - What you've seen on stream (${claw.frameSummaries.length} snapshots)
+VISUAL HISTORY (background context only - focus on → items)
 ═══════════════════════════════════════════════════════════════
-(Oldest at top, MOST RECENT marked with →)
+${claw.frameSummaries.length} snapshots, oldest→newest. ONLY react to → marked items!
 ${frameSummariesFormatted || "(no visual history yet)"}
 
 ═══════════════════════════════════════════════════════════════
-STREAMER'S VOICE - What they said verbally (${claw.recentTranscripts.length} statements)
+STREAMER'S VOICE (background context only - focus on → items)
 ═══════════════════════════════════════════════════════════════
-(Oldest at top, MOST RECENT marked with →)
+${claw.recentTranscripts.length} statements, oldest→newest. ONLY react to → marked items!
 ${transcriptsFormatted || "(streamer hasn't spoken yet)"}
 
 ═══════════════════════════════════════════════════════════════
-CHAT HISTORY - Last ${claw.chatHistory.length} messages
+CHAT HISTORY (background context only - focus on → items)
 ═══════════════════════════════════════════════════════════════
-(Oldest at top, MOST RECENT marked with →)
+${claw.chatHistory.length} messages, oldest→newest. ONLY react to → marked items!
 ${chatHistoryFormatted || "(chat is empty)"}
 
 ═══════════════════════════════════════════════════════════════
-⚡ IMPORTANT: RECENCY MATTERS
+⚡⚡⚡ CRITICAL: RESPOND TO THE LATEST MESSAGES ⚡⚡⚡
 ═══════════════════════════════════════════════════════════════
-- The MOST RECENT items (marked with →) are what's happening NOW
-- The most recent chat message is likely what needs a response
-- Older history is context for understanding the conversation flow
-- Focus your response on the CURRENT moment, not old history
+🎯 YOUR #1 PRIORITY: The MOST RECENT items (marked with →)
+   These are what's happening RIGHT NOW. React to THESE.
+
+📍 HOW TO USE THIS CONTEXT:
+   - LATEST (→ marked) = RESPOND TO THIS. This is the current moment.
+   - Middle messages = Background context only. Don't respond to these.
+   - Oldest messages = Ancient history. Ignore unless directly relevant.
+
+⚠️ COMMON MISTAKE TO AVOID:
+   DO NOT respond to something from 5+ minutes ago!
+   DO NOT bring up old topics that chat has moved past!
+   DO NOT reference things the streamer said a long time ago!
+
+   If you see 750 chat messages, message #750 is NOW.
+   Messages #1-700 are just historical context - don't react to them!
+
+✅ CORRECT: React to the last 1-3 messages or what streamer JUST said
+❌ WRONG: "Earlier someone mentioned..." or "Going back to what X said..."
 `
 
   const userContent: Anthropic.ContentBlockParam[] = []
