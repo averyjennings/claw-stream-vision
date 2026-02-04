@@ -122,7 +122,10 @@ export class AudioTranscriber {
         "-b", "16", // bit depth
         outputFile,
         "trim", "0", String(this.config.chunkDurationSeconds),
-        // No silence detection - let Whisper handle quiet audio
+        // Silence detection: trim leading/trailing silence
+        // This reduces chunks of pure silence being sent to Whisper
+        "silence", "1", "0.1", "1%", // Remove leading silence (voice must start within 0.1s at 1% threshold)
+        "reverse", "silence", "1", "0.1", "1%", "reverse", // Remove trailing silence
       ]
 
       this.recordingProcess = spawn("sox", args, {
@@ -166,6 +169,7 @@ export class AudioTranscriber {
         model: "whisper-1",
         language: "en",
         response_format: "text",
+        temperature: 0, // More deterministic = fewer hallucinations
       })
 
       const text = (response as unknown as string).trim()
@@ -176,6 +180,17 @@ export class AudioTranscriber {
       // Filter out common Whisper hallucinations (happens during silence)
       // These are patterns Whisper learned from YouTube videos
       const hallucinations = [
+        // "Thank you" hallucinations (SUPER COMMON during silence!)
+        "thank you",
+        "thanks",
+        "thank you so much",
+        "thanks so much",
+        "thank you very much",
+        "thanks a lot",
+        "thanks everyone",
+        "thank you all",
+        "thanks guys",
+        "thanks for",
         // YouTube outro patterns (most common hallucination!)
         "thanks for watching",
         "thank you for watching",
@@ -223,6 +238,43 @@ export class AudioTranscriber {
         "like the video",
         "like this video",
         "npm update",  // weird coding stream hallucination
+        // More common Whisper hallucinations during silence
+        "you're welcome",
+        "hello everyone",
+        "hello there",
+        "hey everyone",
+        "hey guys",
+        "alright",
+        "okay",
+        "so",
+        "well",
+        "right",
+        "yeah",
+        "hmm",
+        "mhm",
+        "uh huh",
+        "i'm sorry",
+        "sorry",
+        "please",
+        "excuse me",
+        "pardon",
+        // Chinese/foreign language hallucinations (common with silence)
+        "字幕",
+        "謝謝",
+        "請訂閱",
+        // Numbers/timestamps (YouTube subtitle artifacts)
+        "1",
+        "2",
+        "3",
+        // Podcast/video artifacts
+        "brought to you by",
+        "sponsored by",
+        "this episode",
+        "this video",
+        "in this video",
+        "today we",
+        "welcome back",
+        "welcome to",
       ]
 
       const lowerText = text.toLowerCase()

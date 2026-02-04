@@ -36,7 +36,9 @@ export class TwitchAudioCapture {
   // Buffer for combining incomplete sentences
   private transcriptBuffer: string[] = []
   private bufferTimeout: ReturnType<typeof setTimeout> | null = null
-  private readonly BUFFER_DELAY_MS = 2500
+  private bufferStartTime: number = 0
+  private readonly BUFFER_DELAY_MS = 1000
+  private readonly MAX_BUFFER_TIME_MS = 3000 // Force flush after 3s max
 
   constructor(config: TwitchAudioCaptureConfig) {
     this.config = {
@@ -220,37 +222,19 @@ export class TwitchAudioCapture {
   }
 
   private isValidTranscript(text: string): boolean {
-    const lowerText = text.toLowerCase()
+    const trimmed = text.trim()
+    if (trimmed.length === 0) return false
 
-    // Hallucination patterns
-    const hallucinations = [
-      "thanks for watching", "thank you for watching", "thank you so much for watching",
-      "hope you enjoyed", "i hope you enjoyed", "see you next time", "see you in the next",
-      "next video", "bye", "take care", "subscribe", "like and subscribe",
-      "hit the bell", "notification", "please see the complete disclaimer",
-      "www.", "http", ".com", "copyright", "all rights reserved",
-      "transcript by", "subtitles by", "captions by",
-      "finish the sentence", "complete the sentence", "please complete",
-      "music", "applause", "silence", "♪",
+    // Minimal filter - only the most obvious Whisper hallucinations
+    const lowerText = trimmed.toLowerCase()
+    const obviousHallucinations = [
+      "thanks for watching",
+      "thank you for watching",
+      "subscribe",
+      "like and subscribe",
     ]
-
-    if (hallucinations.some(h => lowerText.includes(h))) {
-      return false
-    }
-
-    // Too short
-    if (text.length < 3 || text.replace(/[^a-zA-Z]/g, "").length < 2) {
-      return false
-    }
-
-    // Single common word
-    const singleWordHallucinations = [
-      "you", "the", "a", "i", "and", "to", "it", "is", "that", "this",
-      "for", "on", "are", "as", "with", "they", "be", "at", "one", "have",
-      "do", "we", "me", "he", "she", "so", "no", "yes", "oh", "um", "uh",
-    ]
-    const words = lowerText.trim().split(/\s+/)
-    if (words.length === 1 && singleWordHallucinations.includes(words[0].replace(/[^a-z]/g, ""))) {
+    if (obviousHallucinations.some(h => lowerText.includes(h))) {
+      console.log(`[TwitchAudio] Filtered obvious hallucination: "${trimmed}"`)
       return false
     }
 
@@ -258,7 +242,19 @@ export class TwitchAudioCapture {
   }
 
   private addToBuffer(text: string): void {
+    // Track when buffer started filling
+    if (this.transcriptBuffer.length === 0) {
+      this.bufferStartTime = Date.now()
+    }
+
     this.transcriptBuffer.push(text)
+
+    // Force flush if buffer has been filling too long
+    const bufferAge = Date.now() - this.bufferStartTime
+    if (bufferAge >= this.MAX_BUFFER_TIME_MS) {
+      this.flushBuffer()
+      return
+    }
 
     if (this.bufferTimeout) {
       clearTimeout(this.bufferTimeout)

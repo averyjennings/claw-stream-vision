@@ -18,6 +18,7 @@ type FrameHandler = (frame: StreamFrame) => void
 type ChatHandler = (message: ChatMessage) => void
 type StateHandler = (state: StreamState) => void
 type TranscriptHandler = (transcript: TranscriptMessage) => void
+type ReconnectHandler = () => void
 
 /**
  * Client library for OpenClaw agents to connect to Claw Stream Vision
@@ -57,6 +58,7 @@ export class ClawStreamClient {
   private chatHandlers: ChatHandler[] = []
   private stateHandlers: StateHandler[] = []
   private transcriptHandlers: TranscriptHandler[] = []
+  private reconnectHandlers: ReconnectHandler[] = []
   private reconnectAttempts = 0
   private maxReconnectAttempts = 5
   private reconnectDelay = 1000
@@ -73,8 +75,16 @@ export class ClawStreamClient {
       this.ws = new WebSocket(this.config.serverUrl)
 
       this.ws.on("open", () => {
-        console.log("[ClawClient] Connected!")
+        const isReconnect = this.reconnectAttempts > 0
+        console.log(`[ClawClient] ${isReconnect ? "Reconnected!" : "Connected!"}`)
         this.connected = true
+
+        // Fire reconnect handlers if this was a reconnection
+        if (isReconnect) {
+          for (const handler of this.reconnectHandlers) {
+            handler()
+          }
+        }
         this.reconnectAttempts = 0
 
         // Register ourselves
@@ -220,6 +230,10 @@ export class ClawStreamClient {
 
   onTranscript(handler: TranscriptHandler): void {
     this.transcriptHandlers.push(handler)
+  }
+
+  onReconnect(handler: ReconnectHandler): void {
+    this.reconnectHandlers.push(handler)
   }
 
   // Actions

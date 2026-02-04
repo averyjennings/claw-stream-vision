@@ -149,6 +149,14 @@ async function main(): Promise<void> {
           broadcaster.setStreamLive(true)
           clearInterval(pollInterval)
           await twitchCapture!.start()
+
+          // Also start audio capture if configured
+          if (twitchAudioCapture) {
+            console.log(`[Main] Starting audio transcription...`)
+            await twitchAudioCapture.start().catch((err: unknown) => {
+              console.error("[Main] Failed to start Twitch audio capture:", err)
+            })
+          }
         }
       }, 30000) // Check every 30 seconds
     }
@@ -159,7 +167,6 @@ async function main(): Promise<void> {
       twitchAudioCapture = new TwitchAudioCapture({
         channel: config.twitch.channel,
         openaiApiKey: config.audio.openaiApiKey,
-        chunkDurationSeconds: config.audio.chunkDurationSeconds,
         quality: "audio_only",
       })
 
