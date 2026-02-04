@@ -27,12 +27,19 @@ function optionalEnvNumber(name: string, defaultValue: number): number {
   return parsed
 }
 
+export type CaptureMode = "obs" | "twitch"
+
 export function loadConfig(): StreamConfig {
+  // Determine capture mode: "obs" (default) or "twitch" (for mobile streaming)
+  const captureMode = optionalEnv("CAPTURE_MODE", "obs") as CaptureMode
+
   return {
+    captureMode,
     twitch: {
       username: requireEnv("TWITCH_USERNAME"),
       oauthToken: requireEnv("TWITCH_OAUTH_TOKEN"),
       channel: requireEnv("TWITCH_CHANNEL"),
+      streamQuality: optionalEnv("TWITCH_STREAM_QUALITY", "720p"), // For twitch capture mode
     },
     obs: {
       websocketUrl: optionalEnv("OBS_WEBSOCKET_URL", "ws://127.0.0.1:4455"),
@@ -53,6 +60,11 @@ export function loadConfig(): StreamConfig {
     },
     server: {
       port: optionalEnvNumber("VISION_SERVER_PORT", 3847),
+    },
+    audio: {
+      openaiApiKey: optionalEnv("OPENAI_API_KEY", ""),
+      enabled: optionalEnv("AUDIO_TRANSCRIPTION_ENABLED", "true") === "true",
+      chunkDurationSeconds: optionalEnvNumber("AUDIO_CHUNK_SECONDS", 8),
     },
   }
 }

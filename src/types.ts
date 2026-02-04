@@ -1,15 +1,26 @@
+export type CaptureMode = "obs" | "twitch"
+
 export interface StreamConfig {
+  captureMode: CaptureMode
   twitch: TwitchConfig
   obs: OBSConfig
   openclaw: OpenClawConfig
   vision: VisionConfig
   server: ServerConfig
+  audio: AudioConfig
+}
+
+export interface AudioConfig {
+  openaiApiKey: string
+  enabled: boolean
+  chunkDurationSeconds: number
 }
 
 export interface TwitchConfig {
   username: string
   oauthToken: string
   channel: string
+  streamQuality?: string // For twitch capture mode: "720p", "480p", "best", etc.
 }
 
 export interface OBSConfig {
@@ -76,8 +87,13 @@ export interface ClawMessage {
   timestamp: number
 }
 
+export interface TranscriptMessage {
+  text: string
+  timestamp: number
+}
+
 export interface VisionBroadcast {
-  type: "frame" | "chat" | "state"
-  payload: StreamFrame | ChatMessage | StreamState
+  type: "frame" | "chat" | "state" | "transcript"
+  payload: StreamFrame | ChatMessage | StreamState | TranscriptMessage
   timestamp: number
 }
