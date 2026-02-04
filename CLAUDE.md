@@ -67,30 +67,33 @@ To run the server and expose it publicly for bots to connect:
 # 1. Start the vision server
 npm start
 
-# 2. In another terminal, expose via localtunnel with consistent subdomain
-npx localtunnel --port 3847 --subdomain claw-stream
-# This creates: https://claw-stream.loca.lt
+# 2. In another terminal, expose via Cloudflare Tunnel (recommended)
+cloudflared tunnel --url http://localhost:3847
+# This creates a URL like: https://xxx-yyy-zzz.trycloudflare.com
 ```
 
-The public URL `wss://claw-stream.loca.lt` is hardcoded in:
-- `skills/stream-vision/SKILL.md` - For OpenClaw agents
-- `examples/chatty-claws.ts` - Default for chatty bots
+> ⚠️ **Don't use localtunnel** - it doesn't support bidirectional WebSocket properly.
+
+Share the Cloudflare URL with bot operators. Note: URL changes on each restart.
 
 ## Running Chatty Bots (Client)
 
 To run bots that connect to the public server:
 
 ```bash
-# Uses public URL by default
-npx tsx examples/chatty-claws.ts
+# Connect to a Cloudflare tunnel URL
+VISION_SERVER_URL=wss://xxx-yyy-zzz.trycloudflare.com npx tsx examples/chatty-claws.ts
 
-# Or specify a different server
+# Or connect locally
 VISION_SERVER_URL=ws://localhost:3847 npx tsx examples/chatty-claws.ts
+
+# Control number of bots
+CLAW_COUNT=20 VISION_SERVER_URL=ws://localhost:3847 npx tsx examples/chatty-claws.ts
 ```
 
 ## WebSocket Protocol
 
-Claws connect to `wss://claw-stream.loca.lt` (or local `ws://localhost:3847`) and exchange JSON messages:
+Claws connect via WebSocket and exchange JSON messages:
 
 **Inbound (claw → server):**
 - `register` - Identify claw with id/name
